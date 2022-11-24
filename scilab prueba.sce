@@ -742,3 +742,298 @@ function x = metodo_SOR(A,b,x0,eps,maxiter)
     disp(iter);
     x = z;
 endfunction
+
+// UNIDAD 7 ----------------------------------------------------------
+
+// Método de Eliminación Gaussiana con pivoteo parcial
+function [x,a] = gausselimPP(A,b)
+[nA,mA] = size(A) 
+[nb,mb] = size(b)
+a = [A b]; // Matriz aumentada
+n = nA;    // Tamaño de la matriz
+// Eliminación progresiva con pivoteo parcial
+for k=1:n-1
+    kpivot = k; amax = abs(a(k,k));  //pivoteo
+    for i=k+1:n
+        if abs(a(i,k))>amax then
+            kpivot = i; amax = a(i,k);
+        end;
+    end;
+    temp = a(kpivot,:); a(kpivot,:) = a(k,:);
+    a(k,:) = temp
+    
+    for i=k+1:n
+        for j=k+1:n+1
+            a(i,j) = a(i,j) - a(k,j)*a(i,k)/a(k,k)
+        end;
+        for j=1:k        // no hace falta para calcular la solución x
+            a(i,j) = 0;  // no hace falta para calcular la solución x
+        end              // no hace falta para calcular la solución x
+    end
+end
+// Sustitución regresiva
+x(n) = a(n,n+1)/a(n,n)
+for i = n-1:-1:1
+    sumk = 0
+    for k=i+1:n
+        sumk = sumk + a(i,k)*x(k)
+    end
+    x(i) = (a(i,n+1)-sumk)/a(i,i)
+end
+endfunction
+
+
+function w = Lagrange(p,x,y)
+        w = 0
+        n = length(x)
+    for i=1:n do
+        w = w + L(p,i,x)*y(i)
+    end
+endfunction
+
+
+// Función L_i(x) del polinomio interpolador de Lagrange
+function w = L(p,i,x)
+    w = 1
+    n = length(x)
+    for j=1:n do
+        if j<>i then
+            w = w*(p-x(j))/(x(i)-x(j))
+        end
+    end
+endfunction
+
+// DD_Newton(p,x,y) Calcula el resultado de aproximar
+// la imagen del punto p utilizando el polinomio interpolante
+// resultante del metodo de diferencias divididas de newton
+// en los puntos (x(i),y(i))
+function w = DD_Newton(p,x,y)
+    w = 0
+    n = length(x)
+    for j=n:-1:2
+        w = (w + DD(x(1:j),y(1:j)))*(p-x(j-1))
+    end
+    w = w + y(1)
+endfunction
+
+// Método de Diferencias Divididas de Newton
+// Retorna el polinomio interpolante resultante
+// de aplicar el método de Diferencias Divididas de Newton
+// en los puntos(x(i),y(i))
+function w = DD_Newton_pol(x,y)
+    // Entrada: x,y = vectores puntos de interpolación (x,y)
+    // Salida: w = polinomio de diferencias divididas de Newton
+    w = 0
+    s = poly(0,"x")
+    n = length(x)
+    for j=n:-1:2
+        w = w*(s-x(j-1)) + DD(x(1:j),y(1:j))*(s-x(j-1))
+    end
+    w = w + y(1)
+endfunction
+
+// Diferencias divididas
+function w = DD(x,y)
+    // Entrada: x,y = vectores de puntos de interpolación (x,y)
+    // Salida: w = diferencias divididas en los vectores x e y
+    n = length(x)
+    if n==2 then
+        w = (y(n)-y(1))/(x(n)-x(1))
+    else
+        w = (DD(x(2:n),y(2:n))-DD(x(1:n-1),y(1:n-1)))/(x(n)-x(1))
+    end
+endfunction
+
+// Error de interpolación
+function w = err(p,x,cot)
+    // Entrada: p = valor real, x = nodos de interpolación, cot = cota de |f^(n))|
+    // Salida: w = error de interpolación en x = p
+    n = length(x)
+    w = cot/(factorial(n))
+    for i=1:n do
+        w = w*abs(p - x(i))
+    end
+endfunction
+
+// Aproximación polinomial de mínimos cuadrados polinomial para matrices con rango completo
+function [p,err] = MinCuad_pol(A,b)
+    // Entrada: b = vectores 1xn
+    // Salida: p = polinomio de mínimos cuadrados; err = vector de errores (eps = Ax-b)
+     [w,a] = gausselimPP((A')*A,(A')*(b'))
+     p = poly(w,"x","coeff")
+     err = A*w-b'
+endfunction
+
+
+// Matriz del método de mínimo cuadrados polinomial
+function A = A_mc(x,n)
+    // Entrada: x,y = vectores 1xn; n = grado de la aproximación
+    // Salida: A = matriz del método de mínimo cuadrados
+    m = length(x)
+    A = ones(m,1)
+    for j=2:(n+1) do
+        A = [A,(x').^(j-1)]
+    end
+endfunction
+
+function p = transformar_pol(p,k)
+    c = coeff(p)
+    m = length(c)
+    for i = 2:m
+        c(i) = c(i) * k**(i-1)
+    end
+    p = poly(c,'x','coeff')
+endfunction
+
+// Chebyshev_intervalo
+// Retorna un polinomio de grado n
+// el cual todas sus raices se encuentran
+function x = raices_Chebyshev_intervalo(a,b,n)
+    p = Chebyshev_mon(n)
+    t = roots(p)
+    if (a<>-1)&&(b<>1) then
+        for i = 1:n
+            x(i) = ((b+a)+t(i)*(b-a))/2
+        end
+    else
+        x = t
+    end
+    
+endfunction
+
+function p = Chebyshev(n)
+    if n == 0 then
+        p = 1
+    else 
+        if n == 1 then
+            p = poly([0 1],'x','coeff')
+        else
+            p2 = poly([0 2],'x','coeff')
+            p = p2 * Chebyshev(n-1) - Chebyshev(n-2)
+        end
+    end
+endfunction
+
+function p = Chebyshev_mon(n)
+    p = Chebyshev(n)* 1/2**(n-1)
+endfunction 
+
+function p = DD_newtonP_chev(f,a,b,n)
+    deff("y = F(x)","y="+f);
+    x = raices_Chebyshev_intervalo(a,b,n+1)
+    y = F(x)
+    p = DD_Newton_pol(x,y)
+endfunction
+
+// graf_error_int(f,w,a,b)
+// f = funcion; w = polinomio interpolante de f
+// a,b = extremos de interpolacion
+// n = Grado del polinomio interpolante
+// Dados una funcion, su polinomio interpolante
+// y los extremos de interpolacion se grafica el error de interpolacion
+function graf_error_int(f,w,a,b,n)
+    deff("y = F(x)","y="+f);
+    z = (a-1):0.01:(b+1)
+    c = 2**(-2*(n-1))
+    deff("v = G(x)","v = F(x) - horner(w,z)")
+    plot2d(z,G(z),rect = [(a-1), -c, (b+1), c],leg="f(x) - P(x)")
+    a=gca()
+    a.x_location = "origin"
+    a.y_location = "origin"
+endfunction
+
+// Pr7 ej 1
+// x = [0 0.2 0.4 0.6]
+// y = [1.0 1.2214 1.4918 1.8221]
+// w = Lagrange(1/3,x,y)
+// disp("Resultado Lagrange")
+// disp(w)
+// w = DD_Newton(1/3,x,y) 
+// disp("Resultado Newton")
+// disp(w)
+
+
+// Ej 7
+//x = [0 0.15 0.31 0.5 0.6 0.75]
+//y = [1 1.004 1.31 1.117 1.223 1.422]
+
+//disp("(#) n=1.")
+//A = A_mc(x,1)
+//deter = det((A')*A)
+//disp("La matriz A del método tiene rango completo, pues: det(A^T*A) = "+string(deter))
+//disp("El polinomio de mínimos cuadrados de grado 1 es:")
+//[p1,err1] = MinCuad_pol(A,y)
+//disp(p1)
+
+//disp("(#) n=2.")
+//A = A_mc(x,2)
+//deter = det((A')*A)
+//disp("La matriz A del método tiene rango completo, pues: det(A^T*A) = "+string(deter))
+//disp("El polinomio de mínimos cuadrados de grado 2 es:")
+//[p2,err2] = MinCuad_pol(A,y)
+//disp(p2)
+
+//disp("(#) n=3.")
+//A = A_mc(x,3)
+//deter = det((A')*A)
+//disp("La matriz A del método tiene rango completo, pues: det(A^T*A) = "+string(deter))
+//disp("El polinomio de mínimos cuadrados de grado 3 es:")
+//[p3,err3] = MinCuad_pol(A,y)
+//disp(p3)
+
+//disp("(#) Analizamos los errores err = norm(Ax-y,2).")
+//disp("Para la aproximación lineal: "+string(norm(err1,2)))
+//disp("Para la aproximación cuadrática: "+string(norm(err2,2)))
+//disp("Para la aproximación cúbica: "+string(norm(err3,2)))
+//disp("Podemos decir que es mejor la aproximación cúbica en este caso.")
+
+// Ejercicio 10
+
+// UNIDAD 8 -------------------------------------------------
+
+
+//Regla del trapecio
+function ap = Regla_del_trapecio(f,a,b)
+    deff("y = F(x)","y="+f);
+    h = (b - a)
+    ap = (F(a) + F(b)) * (h/2)
+endfunction
+
+function ap = RT_Compuesta(f,a,b,n)
+    deff("y = F(x)","y="+f);
+    ap = 0
+    h = (b-a)/n
+    ap = ap + (1/2)*(F(a) + F(b))
+    for i = 1:n-1
+        ap = ap + F(a+i*h)
+    end
+    ap = ap * h
+endfunction
+
+//Regla de Simpson
+function ap = simpson(f,a,b)
+    deff("y = F(x)","y="+f);
+    h = (b-a)/2
+    ap = (h/3)*(F(a) + 4*(F(a+h)) + F(b))
+endfunction
+
+function ap = simpson_compuesta(f,a,b,n)
+    if(int(n/2) <> (n/2)) then
+        disp("La cantidad de intervalos no es par")
+        abort;
+    end
+    deff("y = F(x)","y="+f);
+    h = (b-a)/n
+    ap = 0
+    ap = ap + F(a) + F(b)
+    
+    for i = 1:2:n-1
+        ap = ap + 4*F(a+i*h)
+    end
+    for i = 2:2:n-2
+        ap = ap + 2* F(a+i*h)
+    end
+    ap = ap*(h/3)
+    
+endfunction
+
